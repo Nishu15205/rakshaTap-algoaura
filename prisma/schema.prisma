@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Nanny {
+  id           String   @id @default(cuid())
+  name         String
+  specialty    String
+  experience   Int
+  rating       Float    @default(0)
+  reviewCount  Int      @default(0)
+  bio          String
+  avatar       String
+  availability String   @default("offline")
+  pricePerMin  Int
+  languages    String
+  isOnline     Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  userId       String?  @unique
+  user         User?    @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  bookings     Booking[]
+  reviews      Review[]
+}
+
+model Booking {
+  id          String      @id @default(cuid())
+  nannyId     String
+  parentId    String?
+  parentName  String
+  parentEmail String
+  type        String
+  status      String      @default("pending")
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  endedAt     DateTime?
+  duration    Int?
+  totalPrice  Float?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  nanny       Nanny       @relation(fields: [nannyId], references: [id])
+  callSession CallSession?
+
+  @@index([nannyId])
+  @@index([parentId])
+  @@index([status])
+}
+
+model CallSession {
+  id           String       @id @default(cuid())
+  bookingId    String       @unique
+  roomId       String       @unique
+  status       String       @default("waiting")
+  recordingUrl String?
+  aiSummary    String?
+  duration     Int?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  messages     ChatMessage[]
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  sessionId  String
+  senderName String
+  senderType String
+  content    String
+  createdAt  DateTime    @default(now())
+  session    CallSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  nannyId   String
+  parentName String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  nanny     Nanny    @relation(fields: [nannyId], references: [id])
+
+  @@index([nannyId])
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  phone              String?
+  role               String   @default("parent")
+  password           String
+  avatar             String   @default("")
+  address            String?
+  babyAge            String?
+  emergencyContact   String?
+  bio                String?
+  experience         Int?
+  specialty          String?
+  certifications     String?
+  pricePerMin        Int?
+  languages          String?
+  availability       String   @default("available")
+  isOnline           Boolean  @default(false)
+  subscriptionPlan   String?
+  subscriptionStatus String   @default("none")
+  trialStartDate     DateTime?
+  razorpayCustomerId String?
+  otpCode            String?
+  otpExpiry          DateTime?
+  referralCode       String?  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  nannyProfile       Nanny?
+  registrations      NannyRegistration[]
+
+  @@index([role])
+  @@index([subscriptionStatus])
+}
+
+model AdminSettings {
+  id                String   @id @default(cuid())
+  notificationEmail String   @unique
+  password          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Payment {
+  id                 String   @id @default(cuid())
+  userId             String
+  amount             Float
+  currency           String   @default("inr")
+  status             String   @default("pending")
+  paymentMethod      String   @default("razorpay")
+  razorpayPaymentId  String?
+  razorpayOrderId    String?
+  razorpaySignature  String?
+  description        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model NannyRegistration {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  fullName       String
+  email          String
+  phone          String
+  age            Int?
+  city           String?
+  experience     Int?
+  specialty      String?
+  languages      String?
+  qualifications String?
+  certifications String?
+  resumeUrl      String?
+  workExperience String?
+  about          String?
+  status         String   @default("pending")
+  adminNotes     String?
+  meetingDate    DateTime?
+  meetingTime    String?
+  meetingLink    String?
+  approvedAt     DateTime?
+  rejectedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  userName  String
+  role      String
+  action    String
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  referrerId  String
+  refereeId   String   @unique
+  refereeName String
+  refereeEmail String
+  code        String
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+
+  @@index([referrerId])
+  @@index([refereeId])
+}

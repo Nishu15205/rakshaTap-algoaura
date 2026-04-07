@@ -1,0 +1,14 @@
+{
+  "name": "mumaa-realtime-service",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "socket.io": "^4.8.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10"
+  }
+}
