@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyToken, COOKIE_NAME } from '@/lib/auth'
+import { ensureDatabase } from '@/lib/ensure-db'
 import { cookies } from 'next/headers'
 
 // GET /api/nannies - List active nannies with optional filters (public)
 export async function GET(request: NextRequest) {
   try {
+    // Auto-init database on Netlify
+    await ensureDatabase()
+
     const { searchParams } = new URL(request.url)
     const specialty = searchParams.get('specialty')
     const search = searchParams.get('search')

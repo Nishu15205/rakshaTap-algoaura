@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword, comparePassword, generateToken, COOKIE_NAME, validatePasswordStrength } from '@/lib/auth'
+import { ensureDatabase } from '@/lib/ensure-db'
 import { sendWelcomeEmail } from '@/lib/email'
 
 // Simple in-memory rate limiter (per email, per endpoint)
@@ -33,6 +34,9 @@ function sanitizeUser(user: Record<string, unknown>) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Auto-init database on Netlify
+    await ensureDatabase()
+
     const body = await request.json()
     const { action } = body
 

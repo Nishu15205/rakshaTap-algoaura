@@ -11,3 +11,8 @@
 
 [build.environment]
   NODE_VERSION = "18"
+
+# Required environment variables (set these in Netlify Dashboard)
+# DATABASE_URL = "file:/tmp/mumaa.db"  (auto-set by ensure-db.ts)
+# JWT_SECRET = "your-secret-key"
+# NEXTAUTH_SECRET = "your-secret-key"
