@@ -1,5 +1,5 @@
 [build]
-  command = "npx prisma generate && npx prisma db push --skip-generate && npm run build"
+  command = "npx prisma generate && npm run build"
   publish = ".next"
 
 [[plugins]]
@@ -8,4 +8,6 @@
 [functions]
   node_bundler = "esbuild"
   included_files = ["node_modules/.prisma/**"]
+
+[build.environment]
   NODE_VERSION = "18"
