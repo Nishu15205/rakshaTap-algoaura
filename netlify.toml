@@ -8,6 +8,4 @@
 [functions]
   node_bundler = "esbuild"
   included_files = ["node_modules/.prisma/**"]
-
-[images]
-  remote_images = []
+  NODE_VERSION = "18"
