@@ -18,13 +18,13 @@ function isRateLimited(key: string, maxAttempts: number, windowMs: number): bool
   return false
 }
 
-// Cleanup old entries every 5 minutes
-setInterval(() => {
+// Lazily clean up expired entries (serverless-safe, no setInterval)
+function cleanupRateLimits(): void {
   const now = Date.now()
   for (const [key, entry] of rateLimitMap.entries()) {
     if (now > entry.resetAt) rateLimitMap.delete(key)
   }
-}, 5 * 60 * 1000)
+}
 
 function sanitizeUser(user: Record<string, unknown>) {
   const { password, otpCode, otpExpiry, ...safeUser } = user

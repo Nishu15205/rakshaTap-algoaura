@@ -93,7 +93,7 @@ function useRingtone() {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function IncomingCallOverlay() {
-  const { currentUser, nannies, fetchNannies, nannyAcceptCall, isInCall } = useAppStore()
+  const { currentUser, nannies, fetchNannies, acceptCall, isInCall } = useAppStore()
   const { toast } = useToast()
   const { startRingtone, stopRingtone } = useRingtone()
 
@@ -226,7 +226,7 @@ export default function IncomingCallOverlay() {
           nanny: nannyProfile,
           callSession: { ...incomingCall.callSession, status: 'active' },
         }
-        nannyAcceptCall(bookingWithNanny)
+        acceptCall()
       } else {
         toast({ title: 'Error', description: json.error || 'Could not accept call.', variant: 'destructive' })
       }
@@ -235,7 +235,7 @@ export default function IncomingCallOverlay() {
     } finally {
       setLoading(false)
     }
-  }, [incomingCall, nannyProfile, nannyAcceptCall, stopRingtone, toast])
+  }, [incomingCall, nannyProfile, acceptCall, stopRingtone, toast])
 
   // ─── Reject call handler ─────────────────────────────────────────────────
   const handleReject = useCallback(async () => {

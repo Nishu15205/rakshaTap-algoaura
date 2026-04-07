@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
   X,
@@ -27,15 +27,21 @@ import { useAppStore, type Nanny } from '@/lib/store'
 import { useToast } from '@/hooks/use-toast'
 
 export default function NannySelectionDialog() {
+  const [isOpen, setIsOpen] = useState(false)
   const {
-    isNannySelectOpen,
-    closeNannySelect,
     nannies,
     currentUser,
     selectedNanny,
     setSelectedNanny,
     startCall,
   } = useAppStore()
+
+  // Expose open/close for parent components
+  useEffect(() => {
+    const handler = () => setIsOpen(true)
+    window.addEventListener('open-nanny-select', handler)
+    return () => window.removeEventListener('open-nanny-select', handler)
+  }, [])
 
   const { toast } = useToast()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -79,11 +85,11 @@ export default function NannySelectionDialog() {
         const currentBookings = useAppStore.getState().bookings
         useAppStore.setState({ bookings: [savedBooking, ...currentBookings] })
         // Close dialog
-        closeNannySelect()
+        setIsOpen(false)
         setSelectedId(null)
         // Start the call with 'waiting' status (5-min timer for nanny to accept)
         const apiRoomId = savedBooking.callSession?.roomId
-        startCall(savedBooking, apiRoomId, 'waiting')
+        startCall(savedBooking, apiRoomId)
         toast({
           title: 'Calling ' + nanny.name,
           description: 'Waiting for expert to accept your call...',
@@ -107,7 +113,7 @@ export default function NannySelectionDialog() {
   }
 
   return (
-    <Dialog open={isNannySelectOpen} onOpenChange={(open) => !open && closeNannySelect()}>
+    <Dialog open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl p-0">
         {/* Header */}
         <div className="bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 p-5 rounded-t-3xl relative overflow-hidden">

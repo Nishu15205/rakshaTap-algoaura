@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logApiError } from '@/lib/logger'
 
-// ─── In-memory rate limit store ──────────────────────────────────────────────
-
+// Simple in-memory rate limit store (per-function-instance in serverless)
 const rateLimitStore = new Map<string, { count: number; lastReset: number }>()
 
-// Clean up expired entries every 5 minutes
-setInterval(() => {
+// Lazily clean up expired entries on each check (no setInterval needed)
+function cleanupExpired(): void {
   const now = Date.now()
   for (const [key, entry] of rateLimitStore.entries()) {
     if (now - entry.lastReset > 300_000) {
       rateLimitStore.delete(key)
     }
   }
-}, 300_000)
-
-// ─── Config presets ──────────────────────────────────────────────────────────
+}
 
 interface RateLimitConfig {
   windowMs: number
@@ -32,35 +29,24 @@ const rateLimitConfigs: Record<string, RateLimitConfig> = {
   general: { windowMs: 60_000, max: 30 },
 }
 
-// ─── Core rate limit check ───────────────────────────────────────────────────
-
 function checkRateLimit(key: string, config: RateLimitConfig): boolean {
   const now = Date.now()
   const entry = rateLimitStore.get(key)
 
   if (!entry || now - entry.lastReset > config.windowMs) {
     rateLimitStore.set(key, { count: 1, lastReset: now })
-    return true // allowed
+    cleanupExpired()
+    return true
   }
 
-  if (entry.count >= config.max) {
-    return false // rate limited
-  }
-
+  if (entry.count >= config.max) return false
   entry.count++
-  return true // allowed
+  return true
 }
-
-// ─── Backward-compatible function ────────────────────────────────────────────
 
 export function rateLimit(key: string, maxRequests = 10, windowMs = 60_000): boolean {
   return checkRateLimit(key, { windowMs, max: maxRequests })
 }
-
-// ─── Named rate limiters for each preset ─────────────────────────────────────
-
-const DEFAULT_WINDOW_MS = 60_000
-const DEFAULT_MAX = 30
 
 export function createRateLimiter(preset: keyof typeof rateLimitConfigs) {
   const config = rateLimitConfigs[preset]
@@ -69,7 +55,6 @@ export function createRateLimiter(preset: keyof typeof rateLimitConfigs) {
   }
 }
 
-// Pre-built rate limiters for common use cases
 export const authRateLimit = (key: string) => checkRateLimit(`auth:${key}`, rateLimitConfigs.auth)
 export const forgotPasswordRateLimit = (key: string) => checkRateLimit(`forgotPassword:${key}`, rateLimitConfigs.forgotPassword)
 export const bookingRateLimit = (key: string) => checkRateLimit(`booking:${key}`, rateLimitConfigs.booking)
@@ -77,8 +62,6 @@ export const reviewRateLimit = (key: string) => checkRateLimit(`review:${key}`, 
 export const registrationRateLimit = (key: string) => checkRateLimit(`registration:${key}`, rateLimitConfigs.registration)
 export const uploadRateLimit = (key: string) => checkRateLimit(`upload:${key}`, rateLimitConfigs.upload)
 export const generalRateLimit = (key: string) => checkRateLimit(`general:${key}`, rateLimitConfigs.general)
-
-// ─── Middleware factory ──────────────────────────────────────────────────────
 
 export function createRateLimitMiddleware(
   preset: keyof typeof rateLimitConfigs,
@@ -93,23 +76,15 @@ export function createRateLimitMiddleware(
     const key = `${prefix}:${clientIp}`
 
     if (!checkRateLimit(key, config)) {
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 429 }
-      )
+      return NextResponse.json({ success: false, error: message }, { status: 429 })
     }
-
-    return null // allowed
+    return null
   }
 }
-
-// ─── Helper: get client IP ───────────────────────────────────────────────────
 
 export function getClientIp(request: NextRequest): string {
   return request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 }
-
-// ─── Helper: check rate limit and return error response ─────────────────────
 
 export function checkRateLimitResponse(
   request: NextRequest,
@@ -120,17 +95,11 @@ export function checkRateLimitResponse(
   const config = rateLimitConfigs[preset]
 
   if (!checkRateLimit(`${preset}:${clientIp}`, config)) {
-    logApiError(
-      'RATE_LIMIT',
-      request.nextUrl.pathname,
-      `Rate limited: ${preset}`,
-      undefined
-    )
+    logApiError('RATE_LIMIT', request.nextUrl.pathname, `Rate limited: ${preset}`, undefined)
     return NextResponse.json(
       { success: false, error: errorMessage || `Too many requests. Please try again later.` },
       { status: 429 }
     )
   }
-
   return null
 }

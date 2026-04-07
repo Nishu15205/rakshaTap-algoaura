@@ -1,0 +1,13 @@
+[build]
+  command = "npx prisma generate && npx prisma db push --skip-generate && npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["node_modules/.prisma/**"]
+
+[images]
+  remote_images = []

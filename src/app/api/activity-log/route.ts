@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth'
-import { logApiRequest, logApiError, logger } from '@/lib/logger'
+import { logApiRequest, logApiError } from '@/lib/logger'
 
 // Helper: parse pagination params
 function parsePagination(searchParams: URLSearchParams, defaultLimit = 20, maxLimit = 100) {
@@ -22,36 +22,6 @@ function paginatedResponse(data: unknown[], page: number, limit: number, total: 
       totalPages: Math.ceil(total / limit),
     },
   }
-}
-
-// ─── Helper: log activity (fire-and-forget) ──────────────────────────────────
-
-export function logActivity(
-  userId: string,
-  userName: string,
-  role: string,
-  action: string,
-  details?: string,
-  req?: NextRequest
-) {
-  // Fire-and-forget — don't await
-  void (async () => {
-    try {
-      await db.activityLog.create({
-        data: {
-          userId,
-          userName,
-          role,
-          action,
-          details: details || null,
-          ipAddress: req?.headers.get('x-forwarded-for') || req?.headers.get('x-real-ip') || null,
-          userAgent: req?.headers.get('user-agent') || null,
-        },
-      })
-    } catch (err) {
-      logger.error('Failed to log activity', { userId, action, error: err instanceof Error ? err.message : String(err) })
-    }
-  })()
 }
 
 // GET /api/activity-log - List activity logs (admin only, paginated)

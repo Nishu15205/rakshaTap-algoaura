@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
 import { verifyToken, COOKIE_NAME } from '@/lib/auth'
 import { cookies } from 'next/headers'
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100MB
 const ALLOWED_EXTENSIONS = ['webm', 'mp4']
 
 // POST /api/call-recording
@@ -40,15 +37,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file size
-    if (recording.size > MAX_FILE_SIZE) {
+    if (recording.size > 100 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, error: `File size exceeds the 100MB limit (${(recording.size / (1024 * 1024)).toFixed(1)}MB)` },
+        { success: false, error: `File size exceeds the 100MB limit.` },
         { status: 400 }
       )
     }
 
-    // Validate file type
     const fileExtension = (recording.name?.split('.').pop() || 'webm').toLowerCase()
     if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
@@ -70,9 +65,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ownership check: user must be the booking parent, nanny, or admin
+    // Ownership check
     const isParent = session.booking?.parentId === payload.userId
-    const isNanny = session.booking ? false : false // nanny check via booking
     let isNannyCheck = false
     if (session.booking) {
       const nanny = await db.nanny.findUnique({ where: { id: session.booking.nannyId } })
@@ -83,28 +77,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 })
     }
 
-    // Ensure recordings directory exists in uploads/
-    const recordingsDir = path.join(process.cwd(), 'uploads', 'recordings')
-    await mkdir(recordingsDir, { recursive: true })
+    // In serverless, recordings would be uploaded to object storage (S3, R2, etc.)
+    // Store a placeholder URL
+    const recordingUrl = `recording://${callSessionId}.${fileExtension}`
 
-    // Save the recording file
-    const fileName = `${callSessionId}.${fileExtension}`
-    const filePath = path.join(recordingsDir, fileName)
-
-    const bytes = await recording.arrayBuffer()
-    await writeFile(filePath, Buffer.from(bytes))
-
-    // Update the call session with the recording path
     await db.callSession.update({
       where: { id: callSessionId },
-      data: { recordingUrl: `/uploads/recordings/${fileName}` },
+      data: { recordingUrl },
     })
 
     return NextResponse.json({
       success: true,
       data: {
         callSessionId,
-        recordingUrl: `/uploads/recordings/${fileName}`,
+        recordingUrl,
       },
     })
   } catch (error: unknown) {
